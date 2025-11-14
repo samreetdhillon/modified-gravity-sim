@@ -1,11 +1,4 @@
-import sys
-import pathlib
 import numpy as np
-
-# Ensure project root is on sys.path so `src` can be imported as a package.
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
 
 from src.simulate import run_simulation
 from src.visualize import animate_trajectory
@@ -25,31 +18,24 @@ masses = np.array([1.0, 1.0, 1.0])
 dt = 0.01
 steps = 1500
 
-trajectory = run_simulation(positions, velocities, masses, dt, steps)
-ani = animate_trajectory(trajectory)
+positions_hist, velocities_hist = run_simulation(positions, velocities, masses, dt, steps)
+ani = animate_trajectory(positions_hist)
 plt.show()
 
 
 energies = []
-for t in range(len(trajectory)):
-    E = compute_total_energy(trajectory[t], velocities, masses)
+for t in range(len(positions_hist)):
+    E = compute_total_energy(positions_hist[t], velocities_hist[t], masses)
     energies.append(E)
 
-plt.figure()
-plt.plot(energies)
-plt.title("Total Energy vs Time")
-plt.xlabel("Timestep")
-plt.ylabel("Energy")
-plt.show()
-
 lam = 1.0  # Yukawa length scale
-trajectory_yukawa = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
-ani_yukawa = animate_trajectory(trajectory_yukawa)
+positions_yukawa, velocities_yukawa = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
+ani_yukawa = animate_trajectory(positions_yukawa)
 plt.show()
 
 energies_yukawa = []
-for t in range(len(trajectory_yukawa)):
-    E = compute_total_energy(trajectory_yukawa[t], velocities, masses, force_type="yukawa", lam=lam)
+for t in range(len(positions_yukawa)):
+    E = compute_total_energy(positions_yukawa[t], velocities_yukawa[t], masses, force_type="yukawa", lam=lam)
     energies_yukawa.append(E)
 
 plt.figure()
@@ -65,8 +51,8 @@ lam_values = [0.1, 0.5, 1.0, 2.0, 5.0]  # Different Yukawa length scales
 results = {}
 
 for lam in lam_values:
-    traj = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
-    results[lam] = traj
+    pos_traj, vel_traj = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
+    results[lam] = pos_traj
 
 deviations = {}
 for lam, traj in results.items():
