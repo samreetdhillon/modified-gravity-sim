@@ -16,9 +16,12 @@ trajectories for small systems (N &lt;~ 100).
   - `integrator.py` — pairwise acceleration computation and `leapfrog_step`.
   - `simulate.py` — `run_simulation` (returns positions and velocities histories).
   - `energy.py` — compute total energy (kinetic + potential) for diagnostics.
-  - `visualize.py` — simple Matplotlib animation helper.
-- **`examples/`**: runnable examples and demos
-  - `run_two_body.py`, `run_three_body.py`, `run_nbody.py`
+  - `diagnostics.py` — helper metrics such as energy drift, virial ratio, mean separation, and two-point correlation histograms for quantitative checks.
+  - `visualize.py` — reusable Matplotlib helpers for trajectories, triggering interpolated snapshots, pair-separation histograms, and simple clustering overlays (trail colors, snapshot grids, etc.).
+- **`examples/`**: runnable examples and demos.
+  - `run_two_body.py`, `run_three_body.py`, `run_nbody.py` (each now logs diagnostics and leverages the shared visual helpers).
+- **`notebooks/`**: reference workflow
+  - `simulation_physics_tests.ipynb` — pulls in diagnostics and visualization helpers to verify two-, three-, and N-body behavior interactively.
 - `readme.md` — this document.
 
 ---
@@ -29,7 +32,9 @@ trajectories for small systems (N &lt;~ 100).
   interaction: potential ~ exp(-r/λ)/r (and force implemented accordingly).
 - Uses a leapfrog (velocity Verlet-like) integrator for time-stepping.
 - Returns both positions and velocities histories from `run_simulation` so
-  per-timestep diagnostics (e.g., kinetic energy) are computed correctly.
+  per-timestep diagnostics (like kinetic energy, virial ratio, and energy drift
+  trace) are computed correctly.
+- Provides diagnostics helpers (`mean_interparticle_separation`, `two_point_correlation`, etc.) and visualization utilities to compare Newtonian vs. Yukawa behavior via trajectories, snapshot grids, histograms, and clustering overlays.
 
 ---
 
@@ -109,53 +114,21 @@ API Notes (quick)
 
 ---
 
-Examples explained
+**Examples explained**
 
 - `examples/run_two_body.py`
 
-  - Simple two-body demonstration and energy-over-time plot.
+  - Simple two-body demonstration that now also logs energy drift, virial
+    ratio, and two-point statistics while plotting paired energies and
+    trajectory snapshots.
 
 - `examples/run_three_body.py`
 
-  - Three-body demo that compares Newtonian and Yukawa interactions, and
-    runs a small parameter sweep over `lam` to show orbit deviations.
+  - Three-body demo that compares Newtonian and Yukawa interactions, logs the
+    diagnostics, and runs a `λ` sweep to show orbit deviations—each run
+    visualizes trajectories, snapshots, histograms, and clustering overlays.
 
 - `examples/run_nbody.py`
-  - A small random N-body demonstration (default N=20) to show how the
-    code behaves for a larger number of bodies.
-
----
-
-Recent important changes
-
-- `run_simulation` now returns both positions and velocities histories. This
-  fixes a prior issue where energy was computed using the initial velocities
-  for every timestep. The examples were updated to use the per-timestep
-  velocities when computing kinetic energy.
-- `src` and `examples` are packaged (contain `__init__.py`) and examples are
-  runnable either via `python -m examples.<name>` or directly as scripts
-  (examples include a `ModuleNotFoundError` fallback that inserts the
-  project root into `sys.path` for backward compatibility).
-
----
-
-Potential next steps (ideas you may want to pick from)
-
-- Add `requirements.txt` and/or `pyproject.toml` for easier installs.
-- Add unit tests (e.g., check force symmetry, energy conservation for short
-  runs, shape/return-value tests for `run_simulation`).
-- Add softening parameter to avoid singular accelerations at very small r.
-- Vectorize the O(N^2) acceleration calculation or add `numba` to speed up
-  loops for moderate N.
-- Implement Barnes–Hut / octree for large-N scaling.
-- Improve visualization (trails, color by mass/energy, interactive plots
-  with Plotly/Bokeh).
-
----
-
-Troubleshooting
-
-- If you get `ModuleNotFoundError: No module named 'src'`:
-  - Make sure you are running from the project root and use `python -m examples.<name>`.
-  - Or run the script directly; the examples include a fallback that adds the
-    project root to `sys.path`.
+  - A small random N-body demonstration (default N=20) that reproduces the
+    diagnostics and visualization pipeline for both force types before exploring
+    Yukawa length-scale space.

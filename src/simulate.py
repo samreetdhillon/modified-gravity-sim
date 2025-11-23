@@ -2,7 +2,7 @@ import numpy as np
 from .integrator import leapfrog_step
 from tqdm import tqdm
 
-def run_simulation(positions, velocities, masses, dt, steps, force_type="newtonian", lam=None):
+def run_simulation(positions, velocities, masses, dt, steps, force_type="newtonian", lam=None, softening=0.0):
     """
     Runs the N-body simulation and returns arrays of positions and velocities over time.
 
@@ -21,7 +21,7 @@ def run_simulation(positions, velocities, masses, dt, steps, force_type="newtoni
 
     for t in tqdm(range(1, steps)):
         positions, velocities = leapfrog_step(
-            positions, velocities, masses, dt, force_type, lam
+            positions, velocities, masses, dt, force_type, lam, softening
         )
         positions_history[t] = positions.copy()
         velocities_history[t] = velocities.copy()
