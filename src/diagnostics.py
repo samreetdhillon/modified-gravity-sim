@@ -1,9 +1,6 @@
 from __future__ import annotations
-
 from typing import Sequence
-
 import numpy as np
-
 from .energy import compute_total_energy
 
 
@@ -23,23 +20,11 @@ def mean_interparticle_separation(positions: np.ndarray) -> float:
     return float(np.mean(distances[i, j]))
 
 
-def two_point_correlation(positions: np.ndarray, bin_edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Compute a simple two-point correlation (ξ) for the provided positions.
-
-    Parameters
-    ----------
-    positions : ndarray
-        Array of shape (N, 3) giving particle coordinates.
-    bin_edges : ndarray
-        Bin edges defining the separation shells.
-
-    Returns
-    -------
-    r_centers : ndarray
-        Center of each bin.
-    xi : ndarray
-        Correlation value relative to a uniform random distribution.
-    """
+def two_point_correlation(
+    positions: np.ndarray, 
+    bin_edges: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute a simple two-point correlation (ξ) for the provided positions."""
 
     pos = np.asarray(positions, dtype=float)
     if pos.ndim != 2 or pos.shape[1] != 3:
@@ -55,9 +40,13 @@ def two_point_correlation(positions: np.ndarray, bin_edges: np.ndarray) -> tuple
     pair_dists = distances[i, j]
 
     counts, _ = np.histogram(pair_dists, bins=bin_edges)
-    shell_volumes = 4.0 / 3.0 * np.pi * (bin_edges[1:]**3 - bin_edges[:-1]**3)
+
+    shell_volumes = (
+        4.0 / 3.0 * np.pi * (bin_edges[1:]**3 - bin_edges[:-1]**3)
+    )
     total_vol = 4.0 / 3.0 * np.pi * (np.max(bin_edges)**3)
     total_pairs = N * (N - 1) / 2
+
     expected = np.zeros_like(shell_volumes)
     if total_vol > 0:
         expected = total_pairs * (shell_volumes / total_vol)
@@ -77,26 +66,57 @@ def virial_ratio(
     force_type: str = "newtonian",
     lam: float | None = None,
     softening: float = 0.0,
+    mond_params: dict | None = None,
+    dp_params: dict | None = None,
 ) -> float:
-    """Return the virial ratio 2K/|U| for the provided state."""
+    """
+    Virial ratio 2K / |U|.
+    Handles Newtonian, Yukawa, and MOND.
+
+    For MOND: uses the pseudo-potential defined in energy.py.
+    """
+
     pos = np.asarray(positions, dtype=float)
     vel = np.asarray(velocities, dtype=float)
     m = np.asarray(masses, dtype=float)
 
     kinetic = 0.5 * np.sum(m[:, None] * vel**2)
-    total = compute_total_energy(pos, vel, m, force_type, lam, softening)
+
+    # --- total energy depends on force type ---
+    if force_type == "dark_photon":
+        return float("nan")
+
+    total = compute_total_energy(
+        pos,
+        vel,
+        m,
+        force_type=force_type,
+        lam=lam,
+        softening=softening,
+        mond_params=mond_params,
+        dp_params=dp_params,
+    )
+
     potential = total - kinetic
+
     if potential == 0:
         return float("nan")
+
     return float(2 * kinetic / abs(potential))
 
 
 def energy_drift(energies: Sequence[float]) -> tuple[float, float]:
-    """Compute total drift and max deviation from the initial energy."""
+    """
+    Return (total_drift, max_deviation).
+
+    Independent of force model — works for MOND too.
+    """
     arr = np.asarray(energies, dtype=float)
     if arr.size == 0:
         return 0.0, 0.0
+
     initial = arr[0]
     drift = arr[-1] - initial
     max_dev = float(np.max(np.abs(arr - initial)))
+
     return float(drift), max_dev

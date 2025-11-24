@@ -12,7 +12,7 @@ trajectories for small systems (N &lt;~ 100).
 **Contents**
 
 - **`src/`**: core library
-  - `forces.py` — Newtonian and Yukawa force implementations.
+  - `forces.py` — Newtonian, Yukawa, and MOND helper functions (including μ interpolation curves).
   - `integrator.py` — pairwise acceleration computation and `leapfrog_step`.
   - `simulate.py` — `run_simulation` (returns positions and velocities histories).
   - `energy.py` — compute total energy (kinetic + potential) for diagnostics.
@@ -28,8 +28,9 @@ trajectories for small systems (N &lt;~ 100).
 
 **Quick summary**
 
-- Simulates N particles under either Newtonian gravity or a Yukawa-modified
-  interaction: potential ~ exp(-r/λ)/r (and force implemented accordingly).
+- Simulates N particles under Newtonian gravity, a Yukawa-modified interaction
+  (potential ~ exp(-r/λ)/r), or a toy MOND prescription built from μ interpolation
+  functions.
 - Uses a leapfrog (velocity Verlet-like) integrator for time-stepping.
 - Returns both positions and velocities histories from `run_simulation` so
   per-timestep diagnostics (like kinetic energy, virial ratio, and energy drift
@@ -129,6 +130,8 @@ API Notes (quick)
     visualizes trajectories, snapshots, histograms, and clustering overlays.
 
 - `examples/run_nbody.py`
-  - A small random N-body demonstration (default N=20) that reproduces the
-    diagnostics and visualization pipeline for both force types before exploring
-    Yukawa length-scale space.
+  - A small random N-body demonstration (default N=20) to show how the
+    code behaves for a larger number of bodies.
+- Each example also runs the MOND configuration, logging diagnostics and
+  plotting the matching trajectory, histogram, clustering, and energy traces.
+  Yukawa length-scale space.
