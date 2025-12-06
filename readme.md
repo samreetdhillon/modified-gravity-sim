@@ -1,4 +1,4 @@
-# Yukawa N-body Simulation
+# N-Body Dynamics Under Newtonian, MOND, Yukawa & Dark Photon Forces
 
 Small educational N-body simulation exploring Newtonian and Yukawa-like
 pairwise forces with simple visualization and energy diagnostics.
@@ -20,6 +20,7 @@ trajectories for small systems (N &lt;~ 100).
   - `visualize.py` — reusable Matplotlib helpers for trajectories, triggering interpolated snapshots, pair-separation histograms, and simple clustering overlays (trail colors, snapshot grids, etc.).
 - **`examples/`**: runnable examples and demos.
   - `run_two_body.py`, `run_three_body.py`, `run_nbody.py` (each now logs diagnostics and leverages the shared visual helpers).
+- **`main.py`**: interactive CLI that asks for example selection, initial conditions, and force parameters before running the simulations with the same diagnostics/visuals.
 - **`notebooks/`**: reference workflow
   - `simulation_physics_tests.ipynb` — pulls in diagnostics and visualization helpers to verify two-, three-, and N-body behavior interactively.
 - `readme.md` — this document.
@@ -79,6 +80,12 @@ script, use the `-m examples.<name>` invocation from the project root. The
 examples include a small fallback to add the project root to `sys.path` so
 direct script execution also works.
 
+Or launch the interactive CLI:
+
+```powershell
+python main.py
+```
+
 ---
 
 API Notes (quick)
@@ -110,8 +117,8 @@ API Notes (quick)
   - Compute kinetic + potential energy (pairwise potential)
 
 - `src/visualize.py`
-  - `animate_trajectory(trajectory)` — expects `trajectory` shape `(steps, N, 3)`
-  - Uses Matplotlib `FuncAnimation` to animate x-y projections.
+  - `animate_trajectory(trajectory, *, tail_length=None, title=None, frame_skip=1)` — expects `trajectory` shape `(steps, N, 3)`, labels the animation with a title, and optionally skips frames to speed up playback.
+  - Uses Matplotlib `FuncAnimation` to animate x-y projections while leaving space for axis labels and trail lines.
 
 ---
 

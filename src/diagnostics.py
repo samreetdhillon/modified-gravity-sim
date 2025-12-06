@@ -25,7 +25,7 @@ def two_point_correlation(
     bin_edges: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute a simple two-point correlation (ξ) for the provided positions."""
-
+    # ... (This function remains physically correct as is) ...
     pos = np.asarray(positions, dtype=float)
     if pos.ndim != 2 or pos.shape[1] != 3:
         raise ValueError("positions must be an (N, 3) array")
@@ -65,15 +65,13 @@ def virial_ratio(
     masses: np.ndarray,
     force_type: str = "newtonian",
     lam: float | None = None,
+    yukawa_alpha: float | None = None, # <-- FIXED: Added parameter
     softening: float = 0.0,
     mond_params: dict | None = None,
     dp_params: dict | None = None,
 ) -> float:
     """
     Virial ratio 2K / |U|.
-    Handles Newtonian, Yukawa, and MOND.
-
-    For MOND: uses the pseudo-potential defined in energy.py.
     """
 
     pos = np.asarray(positions, dtype=float)
@@ -82,7 +80,6 @@ def virial_ratio(
 
     kinetic = 0.5 * np.sum(m[:, None] * vel**2)
 
-    # --- total energy depends on force type ---
     if force_type == "dark_photon":
         return float("nan")
 
@@ -92,6 +89,7 @@ def virial_ratio(
         m,
         force_type=force_type,
         lam=lam,
+        yukawa_alpha=yukawa_alpha, # <-- FIXED: Passed parameter
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
@@ -106,11 +104,7 @@ def virial_ratio(
 
 
 def energy_drift(energies: Sequence[float]) -> tuple[float, float]:
-    """
-    Return (total_drift, max_deviation).
-
-    Independent of force model — works for MOND too.
-    """
+    # ... (This function is generic and correct) ...
     arr = np.asarray(energies, dtype=float)
     if arr.size == 0:
         return 0.0, 0.0

@@ -17,6 +17,9 @@ from src.visualize import (
 )
 from src.energy import compute_total_energy
 
+# ==========================================
+# 1. Setup Initial Conditions (Lagrange-like)
+# ==========================================
 positions = np.array([
     [-1.0, 0.0, 0.0],
     [0.5, 0.866, 0.0],
@@ -31,30 +34,56 @@ velocities = np.array([
 
 masses = np.array([1.0, 1.0, 1.0])
 dt = 0.001
-steps = 1500
-mond_params = {"a0": 1e-2, "mu": "simple"}
+steps = 4500
 
-def log_diagnostics(name, final_positions, final_velocities, energy_trace, force_type, lam=None, mond_params=None, dp_params=None, softening=0.0):
+# ==========================================
+# 2. Helper: Log Diagnostics
+# ==========================================
+def log_diagnostics(name, final_positions, final_velocities, energy_trace, force_type, 
+                    lam=None, yukawa_alpha=None, mond_params=None, dp_params=None, softening=0.0):
+    
     drift, max_dev = energy_drift(energy_trace)
+    
+    # Pass yukawa_alpha to virial_ratio for correct potential calculation
     ratio = virial_ratio(
         final_positions,
         final_velocities,
         masses,
         force_type,
         lam=lam,
+        yukawa_alpha=yukawa_alpha, # <--- UPDATED
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
     )
+    
     max_dist = np.max(np.linalg.norm(final_positions - final_positions.mean(axis=0), axis=1))
     max_dist = max(max_dist, 1e-3)
     bin_edges = np.linspace(0, max_dist * 2 + 1e-3, 6)
     centers, xi = two_point_correlation(final_positions, bin_edges)
-    print(f"{name}: ΔE {drift:.3e}, max dev {max_dev:.3e}, virial ratio {ratio:.3f}")
-    print(f"    two-point ξ: {np.round(xi, 3)} @ r={np.round(centers, 2)}")
+    
+    print(f"--- {name} ---")
+    print(f"ΔE drift: {drift:.3e}, Max dev: {max_dev:.3e}")
+    print(f"Virial ratio: {ratio:.3f}")
+    print(f"Two-point ξ: {np.round(xi, 3)} @ r={np.round(centers, 2)}")
+    print("")
 
-positions_hist, velocities_hist = run_simulation(positions, velocities, masses, dt, steps)
-ani = animate_trajectory(positions_hist)
+# ==========================================
+# 3. Newtonian Run
+# ==========================================
+positions_hist, velocities_hist = run_simulation(
+    positions, 
+    velocities, 
+    masses, 
+    dt, 
+    steps,
+    force_type="newtonian",
+)
+ani = animate_trajectory(
+    positions_hist,
+    title="Three-body Newtonian Trajectories",
+    frame_skip=6,
+)
 plt.show()
 
 final_sep = mean_interparticle_separation(positions_hist[-1])
@@ -67,9 +96,27 @@ for t in range(len(positions_hist)):
 
 log_diagnostics("Three-body Newtonian", positions_hist[-1], velocities_hist[-1], energies, "newtonian")
 
-lam = 1  # Yukawa length scale
-positions_yukawa, velocities_yukawa = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
-ani_yukawa = animate_trajectory(positions_yukawa)
+# ==========================================
+# 4. Yukawa Run
+# ==========================================
+lam = 1.0    # Yukawa length scale
+alpha_y = 1.0 # Yukawa coupling strength
+
+positions_yukawa, velocities_yukawa = run_simulation(
+    positions, 
+    velocities, 
+    masses, 
+    dt, 
+    steps, 
+    force_type="yukawa", 
+    lam=lam,
+    yukawa_alpha=alpha_y # <--- UPDATED
+)
+ani_yukawa = animate_trajectory(
+    positions_yukawa,
+    title=f"Three-body Yukawa Trajectories (λ={lam}, α={alpha_y})",
+    frame_skip=6,
+)
 plt.show()
 
 final_sep_yukawa = mean_interparticle_separation(positions_yukawa[-1])
@@ -77,10 +124,30 @@ print(f"Three-body Yukawa mean separation (lam={lam}): {final_sep_yukawa:.4f}")
 
 energies_yukawa = []
 for t in range(len(positions_yukawa)):
-    E = compute_total_energy(positions_yukawa[t], velocities_yukawa[t], masses, force_type="yukawa", lam=lam)
+    E = compute_total_energy(
+        positions_yukawa[t], 
+        velocities_yukawa[t], 
+        masses, 
+        force_type="yukawa", 
+        lam=lam,
+        yukawa_alpha=alpha_y # <--- UPDATED
+    )
     energies_yukawa.append(E)
 
-log_diagnostics("Three-body Yukawa", positions_yukawa[-1], velocities_yukawa[-1], energies_yukawa, "yukawa", lam=lam)
+log_diagnostics(
+    "Three-body Yukawa", 
+    positions_yukawa[-1], 
+    velocities_yukawa[-1], 
+    energies_yukawa, 
+    "yukawa", 
+    lam=lam,
+    yukawa_alpha=alpha_y # <--- UPDATED
+)
+
+# ==========================================
+# 5. MOND Run
+# ==========================================
+mond_params = {"a0": 1e-2, "mu": "simple"}
 
 positions_mond, velocities_mond = run_simulation(
     positions,
@@ -91,7 +158,11 @@ positions_mond, velocities_mond = run_simulation(
     force_type="mond",
     mond_params=mond_params,
 )
-ani_mond = animate_trajectory(positions_mond)
+ani_mond = animate_trajectory(
+    positions_mond,
+    title=f"Three-body MOND Trajectories (a0={mond_params['a0']})",
+    frame_skip=6,
+)
 plt.show()
 
 final_sep_mond = mean_interparticle_separation(positions_mond[-1])
@@ -117,6 +188,9 @@ log_diagnostics(
     mond_params=mond_params,
 )
 
+# ==========================================
+# 6. Dark Photon Run
+# ==========================================
 dp_params = {
     "alpha": 0.03,
     "lam": 1.2,
@@ -132,7 +206,11 @@ positions_dp, velocities_dp = run_simulation(
     force_type="dark_photon",
     dp_params=dp_params,
 )
-ani_dp = animate_trajectory(positions_dp)
+ani_dp = animate_trajectory(
+    positions_dp,
+    title=f"Three-body Dark Photon Trajectories (α={dp_params['alpha']}, λ={dp_params['lam']})",
+    frame_skip=6,
+)
 plt.show()
 
 final_sep_dp = mean_interparticle_separation(positions_dp[-1])
@@ -158,6 +236,9 @@ log_diagnostics(
     dp_params=dp_params,
 )
 
+# ==========================================
+# 7. Visualization & Comparison
+# ==========================================
 time = np.arange(steps) * dt
 records = [
     {
@@ -166,7 +247,6 @@ records = [
         "masses": masses,
         "time": time,
         "force_type": "newtonian",
-        "lambda": None,
     },
     {
         "positions": positions_yukawa,
@@ -175,6 +255,7 @@ records = [
         "time": time,
         "force_type": "yukawa",
         "lambda": lam,
+        "yukawa_alpha": alpha_y, # <--- UPDATED: Added alpha
     },
     {
         "positions": positions_mond,
@@ -197,38 +278,54 @@ records = [
     },
 ]
 
+print("Generating Comparison Plots...")
 plot_trajectories(records)
 plot_snapshots(records, [0, steps // 2, -1])
 plot_pair_separation_histogram(records)
 plot_clustering_overlay(records, np.linspace(0, 4, 16))
 plt.show()
 
-plt.figure()
+plt.figure(figsize=(10, 6))
 plt.plot(energies, label="Newtonian")
-plt.plot(energies_yukawa, label="Yukawa")
+plt.plot(energies_yukawa, label=f"Yukawa (λ={lam}, α={alpha_y})")
 plt.plot(energies_mond, label="MOND")
 plt.plot(energies_dp, label="Dark Photon")
-plt.title("Total Energy vs Time (Three Body, all forces)")
+plt.title("Total Energy vs Time (Three Body)")
 plt.xlabel("Timestep")
 plt.ylabel("Energy")
 plt.legend()
+plt.grid(True, alpha=0.3)
 plt.show()
 
-lam_values = [0.1, 0.5, 1.0, 2.0, 5.0]  # Different Yukawa length scales
+# ==========================================
+# 8. Yukawa Parameter Sweep
+# ==========================================
+lam_values = [0.1, 0.5, 1.0, 2.0, 5.0]
 results = {}
 
-for lam in lam_values:
-    pos_traj, vel_traj = run_simulation(positions, velocities, masses, dt, steps, force_type="yukawa", lam=lam)
-    results[lam] = pos_traj
+print("Running Yukawa Parameter Sweep...")
+for l_val in lam_values:
+    pos_traj, vel_traj = run_simulation(
+        positions, 
+        velocities, 
+        masses, 
+        dt, 
+        steps, 
+        force_type="yukawa", 
+        lam=l_val,
+        yukawa_alpha=alpha_y # <--- UPDATED
+    )
+    results[l_val] = pos_traj
 
 deviations = {}
-for lam, traj in results.items():
+for l_val, traj in results.items():
     com = np.mean(traj[-1], axis=0)
-    deviations[lam] = np.mean(np.linalg.norm(traj[-1] - com, axis=1))
+    deviations[l_val] = np.mean(np.linalg.norm(traj[-1] - com, axis=1))
 
 plt.figure()
 plt.plot(list(deviations.keys()), list(deviations.values()), marker="o")
-plt.title("Three-body Orbit deviation vs Yukawa λ")
+plt.title(f"Three-body Orbit deviation vs Yukawa λ (α={alpha_y})")
 plt.xlabel("λ (Yukawa length scale)")
 plt.ylabel("Average distance from COM")
+plt.grid(True)
 plt.show()
