@@ -1,42 +1,58 @@
 # N-Body Dynamics Under Newtonian, MOND, Yukawa & Dark Photon Forces
 
-Small educational N-body simulation exploring Newtonian and Yukawa-like
-pairwise forces with simple visualization and energy diagnostics.
+Small educational N-body simulation exploring Newtonian gravity, Yukawa-modified interactions, MOND (Modified Newtonian Dynamics) via $\mu$-interpolation, and a Dissipative Dark Photon model with charge-based interactions with simple visualization and energy diagnostics.
 
-This repository is intended as a compact, readable codebase for experimenting
-with pairwise force laws, symplectic integration (leapfrog), and visualizing
-trajectories for small systems (N &lt;~ 100).
+Full project report is available [here](https://drive.google.com/file/d/1Djdih_a9zyFKvfVbWtiAlEvVw4DohCfi/view?usp=sharing).
+
+---
+
+**Quick summary**
+
+- Simulates N particles under Newtonian gravity, Yukawa-modified interactions, MOND (Modified Newtonian Dynamics) via $\mu$-interpolation, and a Dissipative Dark Photon model with charge-based interactions.
+- Employs a Second-Order Leapfrog Integrator for symplectic energy conservation, with a softening parameter to handle high-density close encounters.
+- Returns both positions and velocities histories from `run_simulation` so
+  per-timestep diagnostics (like kinetic energy, virial ratio, and energy drift
+  trace) are computed correctly.
+- Provides diagnostics helpers (`mean_interparticle_separation`, `two_point_correlation`, etc.) and visualization utilities to compare behavior under different forces via trajectories, snapshot grids, histograms, and clustering overlays.
+
+### Project layout & helper scripts
+
+- `src/` — core simulation logic (forces, integrators, diagnostics, visualization) that power the CLI and example scripts.
+- `examples/` — runnable demos highlighting two-body, three-body, and small N-body chains with diagnostics, plots, and parameter sweeps.
+- `results/` — storage for generated animations, diagnostics, stability scans, and statistical snapshots; structure mirrors the example fleets and sweeps so outputs stay organized.
+
+---
+
+### Physics Implementation
+
+- **Yukawa Force:** $F(r) = G \frac{m_1 m_2}{r^2} e^{-r/\lambda} (1 + \frac{r}{\lambda})$
+- **MOND:** Implements the "Simple" $\mu(x) = x/(1+x)$ interpolation to simulate galactic-scale acceleration boosts below $a_0$.
+- **Dark Photon:** A non-conservative model including velocity-dependent drag and $q_i q_j$ charge interactions, useful for simulating dissipative dark matter.
+- **Diagnostics:** Real-time computation of Virial Ratios ($2K/|U|$), Two-Point Correlation Functions $\xi(r)$, and Energy Drift $\Delta E$.
+
+---
+
+### Scientific Results
+
+- **Two-Body:** Observe perihelion precession in Yukawa gravity and orbital decay (inspirals) in the Dark Photon model.
+- **Three-Body:** Test the stability of chaotic systems; observe how MONDian "gravity floors" prevent early dispersion compared to Newtonian baselines.
+- **N-Body (Structure Formation):** Compare the "Cuspy" halo formation of MOND vs. the smoother "Cored" profiles of Yukawa gravity.
 
 ---
 
 **Contents**
 
 - **`src/`**: core library
-  - `forces.py` — Newtonian, Yukawa, and MOND helper functions (including μ interpolation curves).
+  - `forces.py` — Newtonian, Yukawa, MOND, and dark-photon helper functions (including μ interpolation curves).
   - `integrator.py` — pairwise acceleration computation and `leapfrog_step`.
   - `simulate.py` — `run_simulation` (returns positions and velocities histories).
   - `energy.py` — compute total energy (kinetic + potential) for diagnostics.
   - `diagnostics.py` — helper metrics such as energy drift, virial ratio, mean separation, and two-point correlation histograms for quantitative checks.
   - `visualize.py` — reusable Matplotlib helpers for trajectories, triggering interpolated snapshots, pair-separation histograms, and simple clustering overlays (trail colors, snapshot grids, etc.).
 - **`examples/`**: runnable examples and demos.
-  - `run_two_body.py`, `run_three_body.py`, `run_nbody.py` (each now logs diagnostics and leverages the shared visual helpers).
+  - `run_two_body.py`, `run_three_body.py`, `run_nbody.py`.
 - **`main.py`**: interactive CLI that asks for example selection, initial conditions, and force parameters before running the simulations with the same diagnostics/visuals.
-- **`notebooks/`**: reference workflow
-  - `simulation_physics_tests.ipynb` — pulls in diagnostics and visualization helpers to verify two-, three-, and N-body behavior interactively.
 - `readme.md` — this document.
-
----
-
-**Quick summary**
-
-- Simulates N particles under Newtonian gravity, a Yukawa-modified interaction
-  (potential ~ exp(-r/λ)/r), or a toy MOND prescription built from μ interpolation
-  functions.
-- Uses a leapfrog (velocity Verlet-like) integrator for time-stepping.
-- Returns both positions and velocities histories from `run_simulation` so
-  per-timestep diagnostics (like kinetic energy, virial ratio, and energy drift
-  trace) are computed correctly.
-- Provides diagnostics helpers (`mean_interparticle_separation`, `two_point_correlation`, etc.) and visualization utilities to compare Newtonian vs. Yukawa behavior via trajectories, snapshot grids, histograms, and clustering overlays.
 
 ---
 
@@ -86,39 +102,37 @@ Or launch the interactive CLI:
 python main.py
 ```
 
+### Interactive CLI & diagnostics
+
+- `main.py` drives a conversational prompt flow that asks which demo to run (choose `2` for two-body, `3` for three-body, or any other integer >3 to treat that number as N for the `N`-body case). It accepts custom comma-/semicolon-separated masses, positions, and velocities (or falls back on seeded defaults), then prompts which of the Yukawa, MOND, and Dark Photon variants to include.
+- Each non-Newtonian force has configurable parameters (`λ` + `α` for Yukawa, acceleration scale and interpolation for MOND, and per-particle charges plus `α`/`λ` for Dark Photon). The CLI adapts `dt`, step count, softening, and frame-skip heuristics to the selected system size so Newtonian and alternatives share comparable diagnostics.
+- Every run stores both position and velocity histories, computes per-step total energy, logs `ΔE` drift/virial ratio/two-point statistics, animates trajectories via `src.visualize.animate_trajectory`, and finally assembles comparison plots (trajectories, snapshots, pair-separation histograms, clustering overlays, and energy traces) to help distinguish the different forces.
+
 ---
 
-API Notes (quick)
+**API Notes**
 
-- `src/forces.py`
+- **`src/forces.py`**
 
-  - `newtonian_force(r_vec, m1, m2)`
-  - `yukawa_force(r_vec, m1, m2, lam)`
-  - Both return a 3-vector force acting on the first body from the second.
+  - `newtonian_force(r_vec, m1, m2)` — Standard $1/r^2$ interaction.
+  - `yukawa_force(r_vec, m1, m2, lam)` — Screened potential with scale $\lambda$.
+  - `mond_acceleration(r_vec, m_source, a0)` — Implements the MOND "simple" $\mu$-interpolation function to boost acceleration in low-$g$ regimes.
+  - `dark_photon_force(r_vec, v_vec, m1, m2, q1, q2, alpha, lam)` — Includes both a Yukawa-style $q_i q_j$ interaction and a velocity-dependent dissipative term.
 
-- `src/integrator.py`
+- **`src/integrator.py`**
 
-  - `compute_accelerations(positions, masses, force_type='newtonian', lam=None)`
-  - `leapfrog_step(positions, velocities, masses, dt, force_type='newtonian', lam=None)`
-  - `leapfrog_step` advances the state by one timestep and returns
-    `(positions_new, velocities_new)`.
+  - `compute_accelerations(...)` — Vectorized N-body force summation. Supports `force_type` toggles.
+  - `leapfrog_step(...)` — Second-order symplectic step ($v_{1/2}, x_1, v_1$). Now includes a **softening parameter** to prevent numerical singularities during close encounters.
 
-- `src/simulate.py`
+- **`src/diagnostics.py`**
 
-  - `run_simulation(positions, velocities, masses, dt, steps, force_type='newtonian', lam=None)`
-  - Returns `(positions_history, velocities_history)` where each array has
-    shape `(steps, N, 3)`.
-  - Note: velocities history was added so energy/kinetic diagnostics are
-    computed from the correct per-timestep velocities.
+  - `compute_energy_drift(history)` — Measures $\Delta E = (E_{final} - E_{initial})/E_{initial}$.
+  - `compute_virial_ratio(kinetic, potential)` — Returns $\eta = 2K/|U|$; used to check for gravitational equilibrium.
+  - `two_point_correlation(positions, box_size)` — Computes the $\xi(r)$ histogram to quantify matter clumping and spatial structure.
 
-- `src/energy.py`
-
-  - `compute_total_energy(positions, velocities, masses, force_type='newtonian', lam=None)`
-  - Compute kinetic + potential energy (pairwise potential)
-
-- `src/visualize.py`
-  - `animate_trajectory(trajectory, *, tail_length=None, title=None, frame_skip=1)` — expects `trajectory` shape `(steps, N, 3)`, labels the animation with a title, and optionally skips frames to speed up playback.
-  - Uses Matplotlib `FuncAnimation` to animate x-y projections while leaving space for axis labels and trail lines.
+- **`src/visualize.py`**
+  - `plot_comparison_grid(...)` — Generates a 4-way comparison (Newton, Yukawa, MOND, Dark Photon) of trajectories and energy traces.
+  - `animate_trajectory(...)` — 3D/2D animation with trailing lines to visualize orbital precession or "warm start" cluster evolution.
 
 ---
 
