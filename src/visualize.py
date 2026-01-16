@@ -26,10 +26,24 @@ def animate_trajectory(trajectory, *, tail_length=None, title=None, frame_skip=1
     y_vals = trajectory[:, :, 1]
     x_min, x_max = x_vals.min(), x_vals.max()
     y_min, y_max = y_vals.min(), y_vals.max()
+
+    # Force a fixed zoom for N-body clarity
+    if N > 3:
+        ax.set_xlim(-15, 15)
+        ax.set_ylim(-15, 15)
+    else:
+        x_pad = max((x_max - x_min) * 0.1, 0.1)
+        y_pad = max((y_max - y_min) * 0.1, 0.1)
+        ax.set_xlim(x_min - x_pad, x_max + x_pad)
+        ax.set_ylim(y_min - y_pad, y_max + y_pad)
+
+    '''
     x_pad = max((x_max - x_min) * 0.1, 0.1)
     y_pad = max((y_max - y_min) * 0.1, 0.1)
     ax.set_xlim(x_min - x_pad, x_max + x_pad)
     ax.set_ylim(y_min - y_pad, y_max + y_pad)
+    '''
+    
     ax.set_aspect("equal")
     if hasattr(ax, "set_box_aspect"):
         ax.set_box_aspect(1)
@@ -56,16 +70,23 @@ def animate_trajectory(trajectory, *, tail_length=None, title=None, frame_skip=1
 # ============================================================
 def plot_trajectories(records, *, figsize=None, xlim=None, ylim=None):
     axis_size = 4
-    ncols = min(2, len(records))
-    nrows = math.ceil(len(records) / ncols)
+    nplots = max(1, len(records))
+    ncols = min(2, nplots)
+    nrows = math.ceil(nplots / ncols)
     if figsize is None:
         figsize = (ncols * axis_size, nrows * axis_size)
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
-    axes = np.array(axes).reshape(-1)
+    axes_flat = np.array(axes).reshape(-1) if isinstance(axes, np.ndarray) else np.array([axes])
 
-    for rec, ax in zip(records, axes):
+    for idx, rec in enumerate(records):
+        ax = axes_flat[idx]
         traj = rec["positions"]
         force_type = rec.get("force_type", "unknown")
+
+        # Force fixed zoom for comparison plots
+        if traj.shape[1] > 3:
+             ax.set_xlim(-15, 15)
+             ax.set_ylim(-15, 15)
 
         # Build dynamic title
         if force_type == "mond":
@@ -74,9 +95,8 @@ def plot_trajectories(records, *, figsize=None, xlim=None, ylim=None):
             title = f"MOND (μ={mu_type}, a0={a0})"
         elif force_type == "yukawa":
             lam = rec.get("lambda", None)
-            # Try to get alpha from record, default to 1.0 or '?' if missing
             alpha = rec.get("yukawa_alpha", rec.get("alpha", 1.0))
-            title = f"Yukawa (λ={lam}, α={alpha})"  # <-- FIXED: Display Alpha
+            title = f"Yukawa (λ={lam}, α={alpha})"
         elif force_type == "dark_photon":
             alpha = rec.get("alpha", rec.get("dp_alpha", 0))
             lam_dp = rec.get("lam", rec.get("dp_lambda", None))
@@ -84,8 +104,8 @@ def plot_trajectories(records, *, figsize=None, xlim=None, ylim=None):
         else:
             title = "Newtonian"
 
-            for idx in range(traj.shape[1]):
-                ax.plot(traj[:, idx, 0], traj[:, idx, 1])
+        for body_idx in range(traj.shape[1]):
+            ax.plot(traj[:, body_idx, 0], traj[:, body_idx, 1])
 
         ax.set_title(title)
         ax.set_xlabel("x (length units)")
@@ -99,9 +119,7 @@ def plot_trajectories(records, *, figsize=None, xlim=None, ylim=None):
         if ylim:
             ax.set_ylim(*ylim)
 
-    used_axes = axes[: len(records)]
-    # Removed legend to match new guidance
-    for ax in axes[len(records) :]:
+    for ax in axes_flat[len(records):]:
         ax.axis("off")
     fig.tight_layout()
     return fig
@@ -110,23 +128,32 @@ def plot_trajectories(records, *, figsize=None, xlim=None, ylim=None):
 # ============================================================
 # 3. Snapshot plots
 # ============================================================
-def plot_snapshots(records, times, *, figsize=(12, 6), xlim=(-2, 2), ylim=(-2, 2)):
+def plot_snapshots(records, times, *, figsize=None, xlim=None, ylim=None):
+    axis_size = 3
     rows = len(records)
     cols = len(times)
-    fig, axs = plt.subplots(rows, cols, figsize=figsize, sharex=True, sharey=True)
+    if figsize is None:
+        figsize = (max(1, cols) * axis_size, max(1, rows) * axis_size)
 
-    if rows == 1:
-        axs = np.expand_dims(axs, 0)
+    fig, axs = plt.subplots(rows, cols, figsize=figsize, sharex=True, sharey=True)
+    if isinstance(axs, plt.Axes):
+        axs = np.array([[axs]])
+    else:
+        axs = np.array(axs)
+        if axs.ndim == 1:
+            if rows == 1:
+                axs = np.expand_dims(axs, 0)
+            elif cols == 1:
+                axs = np.expand_dims(axs, 1)
 
     for row_idx, rec in enumerate(records):
         force_type = rec.get("force_type", "unknown")
-        
         if force_type == "mond":
             title_base = f"MOND (μ={rec.get('mond_mu', 'simple')}, a0={rec.get('a0', 1e-2)})"
         elif force_type == "yukawa":
             lam = rec.get("lambda", None)
             alpha = rec.get("yukawa_alpha", rec.get("alpha", 1.0))
-            title_base = f"Yukawa (λ={lam}, α={alpha})" # <-- FIXED
+            title_base = f"Yukawa (λ={lam}, α={alpha})"
         elif force_type == "dark_photon":
             alpha = rec.get("alpha", rec.get("dp_alpha", 0))
             lam_dp = rec.get("lam", rec.get("dp_lambda", None))
@@ -136,12 +163,14 @@ def plot_snapshots(records, times, *, figsize=(12, 6), xlim=(-2, 2), ylim=(-2, 2
 
         for col_idx, t_idx in enumerate(times):
             ax = axs[row_idx, col_idx]
-            pos = rec["positions"][t_idx]
-            ax.scatter(pos[:, 0], pos[:, 1], c=rec["masses"], cmap="plasma", s=60)
+            positions = rec["positions"][t_idx]
+            ax.scatter(positions[:, 0], positions[:, 1], c=rec["masses"], cmap="plasma", s=60)
 
             ax.set_title(f"{title_base}\nt={rec['time'][t_idx]:.2f}")
-            ax.set_xlim(*xlim)
-            ax.set_ylim(*ylim)
+            if xlim:
+                ax.set_xlim(*xlim)
+            if ylim:
+                ax.set_ylim(*ylim)
             ax.set_xticks([])
             ax.set_yticks([])
 
@@ -167,7 +196,7 @@ def plot_pair_separation_histogram(records, *, bins=20, density=True, figsize=(6
             label = f"MOND (μ={rec.get('mond_mu','simple')})"
         elif force_type == "yukawa":
             alpha = rec.get("yukawa_alpha", rec.get("alpha", 1.0))
-            label = f"Yukawa (λ={rec.get('lambda')}, α={alpha})" # <-- FIXED
+            label = f"Yukawa (λ={rec.get('lambda')}, α={alpha})"
         elif force_type == "dark_photon":
             alpha = rec.get("alpha", rec.get("dp_alpha", 0))
             lam_dp = rec.get("lam", rec.get("dp_lambda", None))
@@ -206,7 +235,7 @@ def plot_clustering_overlay(records, bin_edges, *, figsize=(6, 4)):
             label = f"MOND (μ={rec.get('mond_mu', 'simple')})"
         elif force_type == "yukawa":
             alpha = rec.get("yukawa_alpha", rec.get("alpha", 1.0))
-            label = f"Yukawa (λ={rec.get('lambda')}, α={alpha})" # <-- FIXED
+            label = f"Yukawa (λ={rec.get('lambda')}, α={alpha})"
         elif force_type == "dark_photon":
             alpha = rec.get("alpha", rec.get("dp_alpha", 0))
             lam_dp = rec.get("lam", rec.get("dp_lambda", None))

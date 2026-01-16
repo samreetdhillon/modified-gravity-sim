@@ -13,7 +13,7 @@ def compute_accelerations(
     masses,
     force_type="newtonian",
     lam=None,
-    yukawa_alpha=None, # <-- FIXED: Added 'yukawa_alpha'
+    yukawa_alpha=None,
     softening=0.0,
     mond_params=None,
     dp_params=None,
@@ -22,9 +22,6 @@ def compute_accelerations(
     N = len(positions)
     acc = np.zeros_like(positions)
 
-    # -------------------------------------
-    # CRITICAL FIX: MOND requires total Newtonian acceleration
-    # -------------------------------------
     if force_type == "mond":
         
         if mond_params is None:
@@ -48,14 +45,10 @@ def compute_accelerations(
             aN_mag = np.linalg.norm(aN_total[i])
             # Add a small epsilon only if necessary, though np.linalg.norm should be robust
             aN_mag_safe = aN_mag + 1e-12 
-            
             x = aN_mag_safe / a0
             mu = mu_func(x)
-            
-            # MOND Acceleration: a_i = mu * a_N,total,i 
-            acc[i] = mu * aN_total[i]
-            
-        return acc # Return immediately, MOND acceleration is complete
+            acc[i] = mu * aN_total[i]            
+        return acc
 
     # -------------------------------------
     # Standard Forces (Newtonian, Yukawa, Dark Photon)
@@ -84,14 +77,14 @@ def compute_accelerations(
             elif force_type == "yukawa":
                 # Check for alpha and use 1.0 if not provided (default behavior)
                 alpha = yukawa_alpha if yukawa_alpha is not None else 1.0 
-                F = yukawa_force(r_vec, masses[i], masses[j], lam, alpha, softening) # <-- FIXED: Passed alpha
-            
+                F = yukawa_force(r_vec, masses[i], masses[j], lam, alpha, softening)
+
             elif force_type == "dark_photon":
                 v_rel = velocities[i] - velocities[j]
                 F = dark_photon_force(
-                    r_vec, v_rel, q[i], q[j], alpha=dp_alpha, lam=lam_dp, softening=softening
+                    r_vec, v_rel, masses[i], masses[j], q[i], q[j], alpha=dp_alpha, lam=lam_dp, softening=softening
                 )
-            
+         
             else:
                 raise ValueError(f"Invalid force_type: {force_type}")
 
@@ -100,7 +93,6 @@ def compute_accelerations(
 
     return acc
 
-
 def leapfrog_step(
     positions,
     velocities,
@@ -108,7 +100,7 @@ def leapfrog_step(
     dt,
     force_type="newtonian",
     lam=None,
-    yukawa_alpha=None, # <-- FIXED: Added 'yukawa_alpha'
+    yukawa_alpha=None,
     softening=0.0,
     mond_params=None,
     dp_params=None,
@@ -123,7 +115,7 @@ def leapfrog_step(
         masses=masses,
         force_type=force_type,
         lam=lam,
-        yukawa_alpha=yukawa_alpha, # <-- FIXED: Passed 'yukawa_alpha'
+        yukawa_alpha=yukawa_alpha,
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
@@ -136,14 +128,13 @@ def leapfrog_step(
     x_new = positions + dt * v_half
 
     # --- 4: compute acceleration at x_{n+1} ---
-    # IMPORTANT: Dark Photon force requires the new v_half
     acc_new = compute_accelerations(
         positions=x_new,
-        velocities=v_half,      # IMPORTANT: leapfrog uses v_half here
+        velocities=v_half,
         masses=masses,
         force_type=force_type,
         lam=lam,
-        yukawa_alpha=yukawa_alpha, # <-- FIXED: Passed 'yukawa_alpha'
+        yukawa_alpha=yukawa_alpha,
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,

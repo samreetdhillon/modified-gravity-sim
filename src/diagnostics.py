@@ -25,7 +25,6 @@ def two_point_correlation(
     bin_edges: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute a simple two-point correlation (ξ) for the provided positions."""
-    # ... (This function remains physically correct as is) ...
     pos = np.asarray(positions, dtype=float)
     if pos.ndim != 2 or pos.shape[1] != 3:
         raise ValueError("positions must be an (N, 3) array")
@@ -65,7 +64,7 @@ def virial_ratio(
     masses: np.ndarray,
     force_type: str = "newtonian",
     lam: float | None = None,
-    yukawa_alpha: float | None = None, # <-- FIXED: Added parameter
+    yukawa_alpha: float | None = None,
     softening: float = 0.0,
     mond_params: dict | None = None,
     dp_params: dict | None = None,
@@ -89,7 +88,7 @@ def virial_ratio(
         m,
         force_type=force_type,
         lam=lam,
-        yukawa_alpha=yukawa_alpha, # <-- FIXED: Passed parameter
+        yukawa_alpha=yukawa_alpha,
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
@@ -104,7 +103,6 @@ def virial_ratio(
 
 
 def energy_drift(energies: Sequence[float]) -> tuple[float, float]:
-    # ... (This function is generic and correct) ...
     arr = np.asarray(energies, dtype=float)
     if arr.size == 0:
         return 0.0, 0.0

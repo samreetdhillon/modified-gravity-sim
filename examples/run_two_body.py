@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Assuming your files are in a package structure 'src', otherwise remove 'src.'
 from src.diagnostics import (
     energy_drift,
     mean_interparticle_separation,
@@ -28,8 +27,8 @@ velocities = np.array([[0.0,  0.2, 0.0],
                        [0.0, -0.2, 0.0]], dtype=float)
 
 masses = np.array([1.0, 1.0])
-dt = 0.02
-steps = 3000
+dt = 0.01
+steps = 5000
 
 # ==========================================
 # 2. Helper: Log Diagnostics
@@ -92,7 +91,7 @@ log_diagnostics("Newtonian", positions_hist[-1], velocities_hist[-1], energies, 
 # 4. Yukawa Run
 # ==========================================
 lam = 1.0   # Range
-alpha_y = 1.0 # Strength of modification (G_eff = G * (1 + alpha)) at r=0
+alpha_y = 1.0 # Yukawa coupling strength; adds a short-range, screened correction to Newtonian gravity
 
 positions_yukawa, velocities_yukawa = run_simulation(
     positions, 
@@ -102,7 +101,7 @@ positions_yukawa, velocities_yukawa = run_simulation(
     steps, 
     force_type="yukawa", 
     lam=lam,
-    yukawa_alpha=alpha_y, # <--- UPDATED
+    yukawa_alpha=alpha_y,
 )
 ani_yukawa = animate_trajectory(
     positions_yukawa,
@@ -113,14 +112,13 @@ plt.show()
 
 energies_yukawa = []
 for t in range(len(positions_yukawa)):
-    # Must pass alpha to energy computation too!
     E = compute_total_energy(
         positions_yukawa[t], 
         velocities_yukawa[t], 
         masses, 
         force_type="yukawa", 
         lam=lam,
-        yukawa_alpha=alpha_y # <--- UPDATED
+        yukawa_alpha=alpha_y
     )
     energies_yukawa.append(E)
 
@@ -131,7 +129,7 @@ log_diagnostics(
     energies_yukawa,
     "yukawa",
     lam=lam,
-    yukawa_alpha=alpha_y # <--- UPDATED
+    yukawa_alpha=alpha_y
 )
 
 # ==========================================
@@ -239,7 +237,7 @@ records = [
         "time": time,
         "force_type": "yukawa",
         "lambda": lam,
-        "yukawa_alpha": alpha_y, # <--- UPDATED: Stores alpha for visualization titles
+        "yukawa_alpha": alpha_y,
     },
     {
         "positions": positions_mond,
@@ -290,7 +288,6 @@ results = {}
 
 print("Running Yukawa Parameter Sweep...")
 for l_val in lam_values:
-    # We use the same alpha_y for consistency, or you could vary it too
     pos_traj, _ = run_simulation(
         positions, 
         velocities, 
@@ -299,7 +296,7 @@ for l_val in lam_values:
         steps, 
         force_type="yukawa", 
         lam=l_val, 
-        yukawa_alpha=alpha_y # <--- UPDATED
+        yukawa_alpha=alpha_y
     )
     results[l_val] = pos_traj
 

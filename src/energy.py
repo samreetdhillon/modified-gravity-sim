@@ -1,10 +1,14 @@
+'''
+Compute total energy (kinetic + potential).
+'''
+
 import numpy as np
 from .forces import (
     newtonian_force,
     yukawa_force,
     mond_mu_simple,
     mond_mu_standard,
-    G  # <-- IMPORTED G to ensure consistency
+    G
 )
 
 def compute_total_energy(
@@ -13,14 +17,11 @@ def compute_total_energy(
     masses,
     force_type="newtonian",
     lam=None,
-    yukawa_alpha=None, # <-- FIXED: Added parameter
+    yukawa_alpha=None,
     softening=0.0,
     mond_params=None,
     dp_params=None,
 ):
-    """
-    Compute total energy (kinetic + potential).
-    """
 
     if force_type == "dark_photon":
         # Dark Photon is non-conservative (velocity dependent), return Kinetic only
@@ -29,10 +30,7 @@ def compute_total_energy(
 
     N = len(positions)
 
-    # --- kinetic energy ---
     kinetic = 0.5 * np.sum(masses[:, None] * velocities**2)
-
-    # --- potential energy ---
     potential = 0.0
 
     softening = 0.0 if softening is None else softening
@@ -56,29 +54,30 @@ def compute_total_energy(
                 potential += -G * masses[i] * masses[j] / softened_r
 
             elif force_type == "yukawa":
-                # U = -G * m1 * m2 * alpha * exp(-r/lam) / r
+                if lam is None:
+                    raise ValueError("You must supply lam when force_type='yukawa'.")
                 alpha = yukawa_alpha if yukawa_alpha is not None else 1.0
-                potential += -G * masses[i] * masses[j] * alpha * np.exp(-softened_r / lam) / softened_r
+                pair_mass = masses[i] * masses[j]
+                U_newton = -G * pair_mass / softened_r
+                yukawa_prefactor = alpha * np.exp(-softened_r / lam)
+                U_yukawa = -G * pair_mass / softened_r * yukawa_prefactor
+                potential += U_newton + U_yukawa
 
             elif force_type == "mond":
                 # Newtonian potential (pairwise)
                 U_N = -G * masses[i] * masses[j] / softened_r
-
                 # Newtonian pairwise acceleration magnitude
                 aN_vec = newtonian_force(r_vec, masses[i], masses[j], softening) / masses[i]
                 aN = np.linalg.norm(aN_vec) + 1e-12
-
                 x = aN / a0
 
                 if mu_type == "simple":
                     mu = mond_mu_simple(x)
                 else:
                     mu = mond_mu_standard(x)
-
                 # MOND pseudo-potential
-                potential += U_N / mu
+                potential += U_N
 
             else:
                 raise ValueError(f"Unknown force_type '{force_type}'.")
-
     return kinetic + potential

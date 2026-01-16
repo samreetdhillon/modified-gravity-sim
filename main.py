@@ -74,13 +74,15 @@ def format_vectors_for_prompt(array: np.ndarray) -> str:
 
 
 def default_nbody_vectors(N: int) -> tuple[np.ndarray, np.ndarray]:
-    angles = np.linspace(0, 2 * np.pi, N, endpoint=False)
-    radius = 0.8
-    speed = 0.2
-    positions = np.vstack([radius * np.cos(angles), radius * np.sin(angles), np.zeros(N)]).T
-    velocities = np.vstack([-speed * np.sin(angles), speed * np.cos(angles), np.zeros(N)]).T
+    # Use a fixed seed for reproducible but interesting defaults
+    rng = np.random.RandomState(42)
+    # Spread particles widely across the visible region
+    positions = rng.uniform(-10, 10, size=(N, 3))
+    positions[:, 2] = 0  # Keep z=0 for 2D visualization
+    # Give each particle a small random velocity
+    velocities = rng.uniform(-1, 1, size=(N, 3))
+    velocities[:, 2] = 0  # Keep z-velocity zero
     return positions, velocities
-
 
 def default_vectors(example: int, N: int) -> tuple[np.ndarray, np.ndarray]:
     if example == 2:
@@ -186,33 +188,80 @@ def run_all_examples():
         display=vel_display,
     )
 
-    lambda_yukawa = float(prompt_with_default("Yukawa length scale λ (length units)", "1.0"))
-    alpha_yukawa = float(prompt_with_default("Yukawa strength α (dimensionless)", "1.0"))
-    mond_a0 = float(prompt_with_default("MOND acceleration scale a0 (length/time^2 units)", "1e-2"))
-    mond_mu = prompt_with_default("MOND μ interpolation (simple or other)", "simple")
-    dp_alpha = float(prompt_with_default("Dark Photon coupling α (dimensionless)", "0.03"))
-    dp_lambda = float(prompt_with_default("Dark Photon length scale λ (length units)", "1.5"))
-    dp_charges_text = prompt_with_default(
-        "Dark Photon charges for each particle (comma separated, dimensionless)",
-        "random",
-    )
+    # Ask which non-Newtonian forces the user wants to run (Newtonian always runs)
+    run_yukawa = prompt_with_default("Run Yukawa alongside Newtonian? (y/n)", "y").strip().lower().startswith("y")
+    run_mond = prompt_with_default("Run MOND alongside Newtonian? (y/n)", "y").strip().lower().startswith("y")
+    run_dp = prompt_with_default("Run Dark Photon alongside Newtonian? (y/n)", "y").strip().lower().startswith("y")
+
+    # Prompt only for parameters that will be used
+    if run_yukawa:
+        lambda_yukawa = float(prompt_with_default("Yukawa length scale λ (length units)", "1.0"))
+        alpha_yukawa = float(prompt_with_default("Yukawa strength α (dimensionless)", "1.0"))
+    else:
+        lambda_yukawa = 1.0
+        alpha_yukawa = 1.0
+
+    if run_mond:
+        mond_a0 = float(prompt_with_default("MOND acceleration scale a0 (length/time^2 units)", "1e-2"))
+        mond_mu = prompt_with_default("MOND μ interpolation (simple or other)", "simple")
+    else:
+        mond_a0 = 1e-2
+        mond_mu = "simple"
+
+    if run_dp:
+        dp_alpha = float(prompt_with_default("Dark Photon coupling α (dimensionless)", "0.03"))
+        dp_lambda = float(prompt_with_default("Dark Photon length scale λ (length units)", "1.5"))
+        dp_charges_text = prompt_with_default(
+            "Dark Photon charges for each particle (comma separated, dimensionless)",
+            "random",
+            display=("random" if N > 6 else "1,-1"),
+        )
+    else:
+        dp_alpha = 0.03
+        dp_lambda = 1.5
+        dp_charges_text = "random"
 
     positions, velocities = build_states(example_choice, masses, positions_text, velocities_text)
     dp_charges = build_dp_charges(dp_charges_text, len(masses))
 
-    dt = 0.02 if N == 2 else 0.001 if N == 3 else 0.01
-    steps = 3000 if N == 2 else 4500 if N == 3 else 2500
-    frame_skip = 4 if N == 2 else 6 if N == 3 else 5
+    #dt = 0.02 if N == 2 else 0.001 if N == 3 else 0.01
+    #steps = 3000 if N == 2 else 4500 if N == 3 else 2500
+    #dt = 0.001 if N==2 else 0.0001 if N==3 else 0.001
+    dt = 0.0001 if N==3 else 0.001
+    steps = 30000 if N == 2 else 50000 if N == 3 else 100000
 
+    frame_skip = 4 if N == 2 else 6 if N == 3 else 5
+    if N > 3:
+        dt = 0.001
+
+    softening_val = 0.001 if N <= 3 else 0.2
     records = []
     animations: list = []
 
     force_runs = [
         ("Newtonian", "newtonian", {}, f"{example_tag} Newtonian Trajectories"),
-        ("Yukawa", "yukawa", {"lam": lambda_yukawa, "yukawa_alpha": alpha_yukawa}, f"{example_tag} Yukawa Trajectories (λ={lambda_yukawa}, α={alpha_yukawa})"),
-        ("MOND", "mond", {"mond_params": {"a0": mond_a0, "mu": mond_mu}}, f"{example_tag} MOND Trajectories (a0={mond_a0})"),
-        ("Dark Photon", "dark_photon", {"dp_params": {"alpha": dp_alpha, "lam": dp_lambda, "charges": dp_charges}}, f"{example_tag} Dark Photon Trajectories (α={dp_alpha}, λ={dp_lambda})"),
     ]
+    if run_yukawa:
+        force_runs.append((
+            "Yukawa",
+            "yukawa",
+            {"lam": lambda_yukawa, "yukawa_alpha": alpha_yukawa},
+            f"{example_tag} Yukawa Trajectories (λ={lambda_yukawa}, α={alpha_yukawa})",
+        ))
+    if run_mond:
+        force_runs.append((
+            "MOND",
+            "mond",
+            {"mond_params": {"a0": mond_a0, "mu": mond_mu}},
+            f"{example_tag} MOND Trajectories (a0={mond_a0})",
+        ))
+    if run_dp:
+        force_runs.append((
+            "Dark Photon",
+            "dark_photon",
+            {"dp_params": {"alpha": dp_alpha, "lam": dp_lambda, "charges": dp_charges}},
+            f"{example_tag} Dark Photon Trajectories (α={dp_alpha}, λ={dp_lambda})",
+        ))
 
     for label, force_type, extra_args, title in force_runs:
         print(f"Running {label} {example_tag}...")
@@ -223,15 +272,16 @@ def run_all_examples():
             dt,
             steps,
             force_type=force_type,
+            softening=softening_val,
             **(extra_args or {}),
         )
         energies = [
             compute_total_energy(
-                positions_hist[t], velocities_hist[t], masses, force_type=force_type, **(extra_args or {}),
+                positions_hist[t], velocities_hist[t], masses, force_type=force_type, softening=softening_val, **(extra_args or {}),
             )
             for t in range(len(positions_hist))
         ]
-        log_diagnostics(label, positions_hist[-1], velocities_hist[-1], energies, force_type, masses, **(extra_args or {}))
+        log_diagnostics(label, positions_hist[-1], velocities_hist[-1], energies, force_type, masses, softening=softening_val, **(extra_args or {}))
         ani = animate_trajectory(positions_hist, title=title, frame_skip=frame_skip)
         animations.append(ani)
         plt.show()
@@ -254,10 +304,13 @@ def run_all_examples():
         )
 
     print("Generating comparison plots...")
-    plot_trajectories(records)
-    plot_snapshots(records, [0, steps // 2, -1])
-    plot_pair_separation_histogram(records)
-    plot_clustering_overlay(records, np.linspace(0, 4, 16))
+    fig = plot_trajectories(records)
+    plt.show()
+    fig = plot_snapshots(records, [0, steps // 2, -1])
+    plt.show()
+    fig = plot_pair_separation_histogram(records)
+    plt.show()
+    fig = plot_clustering_overlay(records, np.linspace(0, 4, 16))
     plt.show()
 
     plt.figure(figsize=(10, 6))

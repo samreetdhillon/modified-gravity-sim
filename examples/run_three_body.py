@@ -33,8 +33,8 @@ velocities = np.array([
 ], dtype=float)
 
 masses = np.array([1.0, 1.0, 1.0])
-dt = 0.001
-steps = 4500
+dt = 0.0001
+steps = 10000
 
 # ==========================================
 # 2. Helper: Log Diagnostics
@@ -44,14 +44,13 @@ def log_diagnostics(name, final_positions, final_velocities, energy_trace, force
     
     drift, max_dev = energy_drift(energy_trace)
     
-    # Pass yukawa_alpha to virial_ratio for correct potential calculation
     ratio = virial_ratio(
         final_positions,
         final_velocities,
         masses,
         force_type,
         lam=lam,
-        yukawa_alpha=yukawa_alpha, # <--- UPDATED
+        yukawa_alpha=yukawa_alpha,
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
@@ -110,7 +109,7 @@ positions_yukawa, velocities_yukawa = run_simulation(
     steps, 
     force_type="yukawa", 
     lam=lam,
-    yukawa_alpha=alpha_y # <--- UPDATED
+    yukawa_alpha=alpha_y
 )
 ani_yukawa = animate_trajectory(
     positions_yukawa,
@@ -130,7 +129,7 @@ for t in range(len(positions_yukawa)):
         masses, 
         force_type="yukawa", 
         lam=lam,
-        yukawa_alpha=alpha_y # <--- UPDATED
+        yukawa_alpha=alpha_y
     )
     energies_yukawa.append(E)
 
@@ -141,7 +140,7 @@ log_diagnostics(
     energies_yukawa, 
     "yukawa", 
     lam=lam,
-    yukawa_alpha=alpha_y # <--- UPDATED
+    yukawa_alpha=alpha_y
 )
 
 # ==========================================
@@ -255,7 +254,7 @@ records = [
         "time": time,
         "force_type": "yukawa",
         "lambda": lam,
-        "yukawa_alpha": alpha_y, # <--- UPDATED: Added alpha
+        "yukawa_alpha": alpha_y,
     },
     {
         "positions": positions_mond,
@@ -313,7 +312,7 @@ for l_val in lam_values:
         steps, 
         force_type="yukawa", 
         lam=l_val,
-        yukawa_alpha=alpha_y # <--- UPDATED
+        yukawa_alpha=alpha_y
     )
     results[l_val] = pos_traj
 

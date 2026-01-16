@@ -27,7 +27,7 @@ positions = np.random.uniform(-1, 1, size=(N, 3))
 velocities = np.random.uniform(-0.1, 0.1, size=(N, 3))
 masses = np.ones(N)
 
-dt = 0.01
+dt = 0.001
 steps = 2500
 mond_params = {"a0": 1e-2, "mu": "simple"}
 
@@ -43,21 +43,20 @@ dp_params = {
 }
 
 # ==========================================
-# 2. Helper: Log Diagnostics (Updated)
+# 2. Helper: Log Diagnostics
 # ==========================================
 def log_diagnostics(name, final_positions, final_velocities, energy_trace, force_type, 
                     lam=None, yukawa_alpha=None, mond_params=None, dp_params=None, softening=0.0):
     
     drift, max_dev = energy_drift(energy_trace)
     
-    # Pass yukawa_alpha to virial_ratio for correct potential calculation
     ratio = virial_ratio(
         final_positions,
         final_velocities,
         masses,
         force_type,
         lam=lam,
-        yukawa_alpha=yukawa_alpha, # <--- UPDATED: New parameter
+        yukawa_alpha=yukawa_alpha,
         softening=softening,
         mond_params=mond_params,
         dp_params=dp_params,
@@ -114,7 +113,7 @@ positions_yukawa, velocities_yukawa = run_simulation(
     steps, 
     force_type="yukawa", 
     lam=lam,
-    yukawa_alpha=alpha_y, # <--- UPDATED: Pass alpha
+    yukawa_alpha=alpha_y,
 )
 ani_yukawa = animate_trajectory(
     positions_yukawa,
@@ -134,7 +133,7 @@ for t in range(len(positions_yukawa)):
         masses, 
         force_type="yukawa", 
         lam=lam,
-        yukawa_alpha=alpha_y, # <--- UPDATED: Pass alpha
+        yukawa_alpha=alpha_y,
     )
     energies_yukawa.append(E)
 
@@ -145,7 +144,7 @@ log_diagnostics(
     energies_yukawa, 
     "yukawa", 
     lam=lam,
-    yukawa_alpha=alpha_y, # <--- UPDATED: Pass alpha
+    yukawa_alpha=alpha_y,
 )
 
 # ==========================================
@@ -263,7 +262,7 @@ records = [
         "time": time,
         "force_type": "yukawa",
         "lambda": lam,
-        "yukawa_alpha": alpha_y, # <--- UPDATED: Added alpha for visualization
+        "yukawa_alpha": alpha_y,
     },
     {
         "positions": positions_mond,
@@ -308,7 +307,7 @@ for l_val in lam_values:
         steps, 
         force_type="yukawa", 
         lam=l_val,
-        yukawa_alpha=alpha_y # <--- UPDATED: Pass alpha
+        yukawa_alpha=alpha_y
     )
     results[l_val] = pos_traj
 
