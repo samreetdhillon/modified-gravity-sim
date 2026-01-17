@@ -2,7 +2,7 @@
 
 Small educational N-body simulation exploring Newtonian gravity, Yukawa-modified interactions, MOND (Modified Newtonian Dynamics) via $\mu$-interpolation, and a Dissipative Dark Photon model with charge-based interactions with simple visualization and energy diagnostics.
 
-Full project report is available [here](https://drive.google.com/file/d/1Djdih_a9zyFKvfVbWtiAlEvVw4DohCfi/view?usp=sharing).
+Full project report is available [here](https://drive.google.com/file/d/1wuSkjKia55flZejOGU2Jvx1dd2_sQUwQ/view?usp=sharing).
 
 ---
 
