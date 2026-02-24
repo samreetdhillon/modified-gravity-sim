@@ -64,7 +64,6 @@ def log_diagnostics(name, final_positions, final_velocities, energy_trace, force
     
     max_dist = np.max(np.linalg.norm(final_positions - final_positions.mean(axis=0), axis=1))
     max_dist = max(max_dist, 1e-3)
-    # Increased number of bins for N-body two-point correlation analysis
     bin_edges = np.linspace(0, max_dist * 2 + 1e-3, 8) 
     centers, xi = two_point_correlation(final_positions, bin_edges)
     

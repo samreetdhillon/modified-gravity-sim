@@ -42,17 +42,3 @@ def dark_photon_force(r_vec, v_rel, m1, m2, q1, q2, alpha=1e-2, lam=1.0, softeni
     total_f_mag = f_newton + f_dp
     
     return total_f_mag * unit_r
-'''
-def dark_photon_force(r_vec, v_rel, q1, q2, alpha=1e-2, lam=1.0, softening=0.0):
-    """
-    Pairwise velocity-dependent dark-photon force on particle i due to j.
-    r_vec = r_i - r_j
-    v_rel = v_i - v_j
-    Returns force vector acting on i (note F_ji = -F_ij because v_rel_ji = -v_rel_ij).
-    """
-    r2 = np.dot(r_vec, r_vec) + softening**2
-    r = np.sqrt(r2)
-    # Yukawa-like spatial falloff times velocity-dependent coupling
-    factor = alpha * q1 * q2 * np.exp(-r / lam) / r2
-    return factor * v_rel
-'''

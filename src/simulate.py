@@ -20,7 +20,6 @@ def run_simulation(
     dp_params=None,
 ):
 
-    # ... (Error checking and default setup for MOND and DP remains here)
     N = len(positions)
     positions_history = np.zeros((steps, N, 3))
     velocities_history = np.zeros((steps, N, 3))

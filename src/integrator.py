@@ -43,7 +43,6 @@ def compute_accelerations(
         # Pass 2: Apply MOND correction
         for i in range(N):
             aN_mag = np.linalg.norm(aN_total[i])
-            # Add a small epsilon only if necessary, though np.linalg.norm should be robust
             aN_mag_safe = aN_mag + 1e-12 
             x = aN_mag_safe / a0
             mu = mu_func(x)
@@ -75,7 +74,7 @@ def compute_accelerations(
                 F = newtonian_force(r_vec, masses[i], masses[j], softening)
 
             elif force_type == "yukawa":
-                # Check for alpha and use 1.0 if not provided (default behavior)
+                # Check for alpha and use 1.0 if not provided
                 alpha = yukawa_alpha if yukawa_alpha is not None else 1.0 
                 F = yukawa_force(r_vec, masses[i], masses[j], lam, alpha, softening)
 
